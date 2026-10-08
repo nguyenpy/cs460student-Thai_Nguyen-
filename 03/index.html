@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS460 Assignment 3: The Flickering Pink (and Green) Torus World</title>
+    <style>
+        html,
+        body {
+            background: linear-gradient(20deg, white 0%, blue 50%, rgb(103, 115, 103) 100%);
+            background-repeat: no-repeat;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #fff;
+            background: rgba(18, 18, 24, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+            user-select: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            max-width: 480px;
+        }
+
+        #title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, #ff69b4, #7cfc00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #instructions {
+            font-size: 12px;
+            color: #ddd;
+            line-height: 1.6;
+        }
+
+        .key-badge {
+            background: rgba(255, 255, 255, 0.18);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        #stats {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 11px;
+            color: #aaa;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        #header {
+            position: absolute;
+            top: 42rem;
+            left: 2rem;
+            color: #fff;
+            background: black;
+            -webkit-backdrop-filter: blur(10px);
+            padding: 14px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 10px 10px 20px 0px blue;
+            max-width: 480px;
+        }
+    </style>
+
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@latest/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@latest/examples/jsm/"
+      }
+    }
+    </script>
+
+    <script type="module">
+
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Global variables
+        var renderer, controls, scene, camera, invisible_plane;
+        var LASTOBJECT = null;
+        var isDragging = false;
+        var FLICKERING = false;
+        var WIREFRAME = false;
+        var ALL_TORUSES = [];
+
+        // Colors
+        var HOTPINK = 0xFF69B4;
+        var GRASSGREEN = 0x7CFC00;
+        var white = 0xFFFFFF;
+        var blue = 0x0000FF;
+        var green = 0x00FF00;
+        var red = 0xFF0000;
+        var yellow = 0xFFFF00;
+        var black = 0x000000;
+        var orange = 0xFFA500;
+
+        window.onload = function () {
+
+            // Create scene
+            scene = new THREE.Scene();
+
+            // Setup camera
+            var fov = 75;
+            var ratio = window.innerWidth / window.innerHeight;
+            var zNear = 1;
+            var zFar = 10000;
+            camera = new THREE.PerspectiveCamera(fov, ratio, zNear, zFar);
+            camera.position.set(0, 10, 100);
+
+            // Create renderer and append to body
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setClearColor(0x000000, 0);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Setup lights
+            var ambientLight = new THREE.AmbientLight(GRASSGREEN, 7.0);
+            scene.add(ambientLight);
+
+            var light = new THREE.DirectionalLight(HOTPINK, 7.0);
+            light.position.set(10, 10, 10);
+            scene.add(light);
+
+            var fillLight = new THREE.DirectionalLight(white, 5.5);
+            fillLight.position.set(10, -100, 0);
+            scene.add(fillLight);
+
+            // The invisible plane for raycasting unproject
+            var planeGeometry = new THREE.PlaneGeometry(10000, 10000);
+            var planeMaterial = new THREE.MeshBasicMaterial({
+                visible: false
+            });
+            invisible_plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            scene.add(invisible_plane);
+
+            // Setup OrbitControls
+            controls = new OrbitControls(camera, renderer.domElement);
+
+            // Part 3: Mousedown interaction with Shift key
+            renderer.domElement.onmousedown = function (e) {
+                if (!e.shiftKey) {
+                    return;
+                }
+
+                // Turn off OrbitControls when placing geometry
+                controls.enabled = false;
+                isDragging = true;
+
+                var pixel_coords = new THREE.Vector2(e.clientX, e.clientY);
+
+                var vp_coords = new THREE.Vector2(
+                    (pixel_coords.x / window.innerWidth) * 1 - 1,   // X
+                    -(pixel_coords.y / window.innerHeight) * 2 + 1  // Y
+                );
+
+                var vp_coords_near = new THREE.Vector3(vp_coords.x, vp_coords.y, 0);
+
+                var raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(vp_coords_near, camera);
+                var intersects = raycaster.intersectObject(invisible_plane);
+
+                if (intersects.length > 0) {
+                    // Part 1 & 2: THREE.TorusKnotGeometry (radius=10, tube=3, tubularSegments=64, radialSegments=8)
+                    var geometry = new THREE.TorusKnotGeometry(10, 3, 60, 10);
+                    var material = new THREE.MeshStandardMaterial({
+                        color: HOTPINK,
+                        side: THREE.DoubleSide,
+                        wireframe: WIREFRAME,
+                        roughness: 0.4,
+                        metalness: 0.2
+                    });
+
+                    var torus = new THREE.Mesh(geometry, material);
+                    torus.position.set(
+                        intersects[0].point.x,
+                        intersects[0].point.y,
+                        intersects[0].point.z
+                    );
+
+                    scene.add(torus);
+
+                    // Track last placed object and list of all toruses
+                    LASTOBJECT = torus;
+                    ALL_TORUSES.push(torus);
+
+                    updateStats();
+                }
+            };
+
+            // Part 4: Re-enable controls on mouseup
+            renderer.domElement.onmouseup = function (e) {
+                controls.enabled = true;
+                isDragging = false;
+            };
+
+            window.addEventListener('mouseup', function (e) {
+                controls.enabled = true;
+                isDragging = false;
+            });
+
+            // Part 5 & 6: Scale on mousemove and switch color when scale crosses zero
+            renderer.domElement.onmousemove = function (e) {
+                if (!isDragging || !LASTOBJECT) {
+                    return;
+                }
+
+                console.log('movementY:', e.movementY);
+
+                // Movement scaling: dragging up increases size, dragging down decreases
+                var DELTA = -e.movementY * 0.01;
+
+                LASTOBJECT.scale.set(
+                    LASTOBJECT.scale.x + DELTA,
+                    LASTOBJECT.scale.y + DELTA,
+                    LASTOBJECT.scale.z + DELTA
+                );
+
+                // Part 6: Switch from hotpink to grassgreen once scale crosses zero (flips)
+                if (LASTOBJECT.scale.x < 0) {
+                    LASTOBJECT.material.color.set(GRASSGREEN);
+                } else {
+                    LASTOBJECT.material.color.set(HOTPINK);
+                }
+            };
+
+            // Part 7 & Bonus: Listen to window.onkeypress for 'f' (flicker) and 'w' (wireframe)
+            window.onkeypress = function (e) {
+                if (e.key === 'f' || e.key === 'F') {
+                    FLICKERING = !FLICKERING;
+                    console.log('FLICKERING:', FLICKERING);
+
+                    if (!FLICKERING) {
+                        for (var i = 0; i < ALL_TORUSES.length; i++) {
+                            ALL_TORUSES[i].material.transparent = false;
+                            ALL_TORUSES[i].material.opacity = 1.0;
+                            ALL_TORUSES[i].material.needsUpdate = true;
+                        }
+                    }
+                    updateStats();
+                } else if (e.key === 'w' || e.key === 'W') {
+                    WIREFRAME = !WIREFRAME;
+                    console.log('WIREFRAME:', WIREFRAME);
+
+                    for (var i = 0; i < ALL_TORUSES.length; i++) {
+                        ALL_TORUSES[i].material.wireframe = WIREFRAME;
+                    }
+
+                    var count = ALL_TORUSES.length;
+                    var uniqueVerts = count * 512;
+                    var bufferVerts = count * 585;
+                    var edges = count * 1536;
+                    var faces = count * 1024;
+                    console.log('Wireframe Scene Estimation: ' + count + ' toruses | Vertices (unique): ' + uniqueVerts + ' | Vertices (buffer): ' + bufferVerts + ' | Edges: ' + edges + ' | Faces: ' + faces);
+                    updateStats();
+                }
+            };
+
+            // Window resize handler
+            window.addEventListener('resize', function () {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Initial stats update
+            updateStats();
+
+            // Start animation loop
+            animate();
+
+        };
+
+        // Animation / Rendering loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Part 7: Flickering with random opacity
+            if (FLICKERING) {
+                for (var i = 0; i < ALL_TORUSES.length; i++) {
+                    ALL_TORUSES[i].material.transparent = true;
+                    ALL_TORUSES[i].material.opacity = Math.random(); // randomize
+                    ALL_TORUSES[i].material.needsUpdate = true;
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Helper to update the stats display
+        function updateStats() {
+            var statsEl = document.getElementById('stats');
+            if (statsEl) {
+                var count = ALL_TORUSES.length;
+                var uniqueVerts = count * 512;
+                var bufferVerts = count * 585;
+                var edges = count * 1536;
+                var faces = count * 1024;
+                statsEl.innerHTML =
+                    'Toruses: ' + count +
+                    ' &bull; Vertices: ' + uniqueVerts + ' (unique) / ' + bufferVerts + ' (buffer)' +
+                    '<br>Edges: ' + edges +
+                    ' &bull; Faces: ' + faces +
+                    '<br>Flickering: ' + (FLICKERING ? '<span style="color:#ff69b4; font-weight:bold;">ON</span>' : 'OFF') +
+                    ' &bull; Wireframe: ' + (WIREFRAME ? '<span style="color:#7cfc00; font-weight:bold;">ON</span>' : 'OFF');
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="overlay">
+        <div id="title">Assignment 3: The Flickering Pink (and Green) Torus World</div>
+        <div id="instructions">
+            &bull; Hold <span class="key-badge">SHIFT</span> + <span class="key-badge">Click & Drag</span> to place and
+            scale a torus.<br>
+            &bull; Dragging down flips through scale 0 to turn <span
+                style="color:greenyellow; font-weight:bold;">grassgreen</span>.<br>
+            &bull; Dragging back up flips to turn <span style="color:#ff69b4; font-weight:bold;">hotpink</span>.<br>
+            &bull; Release mouse to resume camera orbit / zoom.<br>
+            &bull; Press <span class="key-badge">F</span> to toggle random flickering.<br>
+            &bull; Press <span class="key-badge">W</span> to toggle wireframe mode.
+        </div>
+        <div id="stats"></div>
+    </div>
+    <h1 id="header">Thai Nguyen</h1>
+</body>
+
+</html>
