@@ -1,0 +1,991 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+    <title>Vanilla WebGL!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+      html, body { 
+        background-color:#000;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden !important;  
+        background-image: url(https://cs460.org/gfx/bg.gif);
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #fff;
+      }
+
+      #c {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      /* Top Anti-Gravity HUD */
+      #antigravity-hud {
+        position: absolute;
+        top: 16px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+        z-index: 20;
+        animation: antigravity-hover 4s ease-in-out infinite alternate;
+      }
+
+      @keyframes antigravity-hover {
+        0% { transform: translateY(0px); }
+        100% { transform: translateY(-4px); }
+      }
+
+      .hud-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: rgba(11, 15, 25, 0.72);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 8px 18px;
+        border-radius: 9999px;
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.12);
+        pointer-events: auto;
+      }
+
+      .brand-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .brand-orb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #38bdf8 20%, #6366f1 80%);
+        box-shadow: 0 0 10px #38bdf8, 0 0 20px #6366f1;
+        animation: orb-pulse 2s infinite ease-in-out;
+      }
+
+      @keyframes orb-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.25); opacity: 1; box-shadow: 0 0 16px #38bdf8, 0 0 28px #a855f7; }
+      }
+
+      .brand-name {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: 2.5px;
+        background: linear-gradient(135deg, #ffffff 30%, #38bdf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .brand-sub {
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        color: #94a3b8;
+        padding-left: 4px;
+        border-left: 1px solid rgba(148, 163, 184, 0.3);
+      }
+
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 4px 10px;
+        border-radius: 9999px;
+      }
+
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 8px #34d399;
+        animation: live-blink 1.5s infinite;
+      }
+
+      @keyframes live-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .hud-center {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: rgba(11, 15, 25, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 8px 22px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        pointer-events: auto;
+      }
+
+      .telemetry-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .telemetry-label {
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .telemetry-val {
+        font-family: 'Space Grotesk', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: #e2e8f0;
+      }
+
+      .telemetry-val.glow {
+        color: #38bdf8;
+        text-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      }
+
+      .telemetry-divider {
+        width: 1px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .hud-right {
+        pointer-events: auto;
+      }
+
+      .score-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        background: rgba(11, 15, 25, 0.78);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 8px 20px;
+        border-radius: 16px;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(56, 189, 248, 0.18);
+      }
+
+      .score-label {
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: #38bdf8;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      #scoreboard {
+        font-family: 'Space Grotesk', monospace, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        color: #ffffff;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.8), 0 2px 4px #000;
+        line-height: 1.2;
+        transition: all 0.2s ease;
+      }
+
+      /* Bottom Flight Deck */
+      #flight-deck {
+        position: absolute;
+        bottom: 22px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+        z-index: 20;
+      }
+
+      .controls-guide {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(11, 15, 25, 0.65);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        padding: 6px 14px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+        pointer-events: auto;
+      }
+
+      .ctrl-key {
+        font-family: 'Space Grotesk', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        padding: 3px 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      }
+
+      .ctrl-hint {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        color: #94a3b8;
+        margin-left: 4px;
+      }
+
+      #magic-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #a5f3fc;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 12px 28px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.85) 100%);
+        border: 1.5px solid rgba(56, 189, 248, 0.6);
+        border-radius: 9999px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 25px rgba(56, 189, 248, 0.4);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: auto;
+      }
+
+      #magic-badge:hover {
+        transform: scale(1.06);
+        border-color: #38bdf8;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 45px rgba(56, 189, 248, 0.7);
+        color: #ffffff;
+      }
+
+      #magic-badge.active {
+        background: linear-gradient(135deg, rgba(225, 29, 72, 0.95) 0%, rgba(147, 51, 234, 0.9) 100%);
+        border-color: #f43f5e;
+        box-shadow: 0 0 50px rgba(244, 63, 94, 0.9), 0 0 90px rgba(168, 85, 247, 0.75);
+        color: #ffffff;
+        animation: pulse-magic 0.45s infinite alternate;
+      }
+
+      @keyframes pulse-magic {
+        from { transform: scale(1); }
+        to { transform: scale(1.08); }
+      }
+
+      .magic-icon {
+        color: #38bdf8;
+        font-size: 15px;
+        animation: icon-spin 4s linear infinite;
+      }
+
+      #magic-badge.active .magic-icon {
+        color: #fef08a;
+      }
+
+      @keyframes icon-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .shockwave {
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        pointer-events: none;
+        border: 4px solid rgba(56, 189, 248, 0.95);
+        box-shadow: 0 0 40px rgba(168, 85, 247, 0.95), inset 0 0 35px rgba(56, 189, 248, 0.85);
+        transform: translate(-50%, -50%) scale(0.15);
+        animation: shockwave-expand 0.95s cubic-bezier(0.1, 0.85, 0.25, 1) forwards;
+        z-index: 15;
+      }
+
+      @keyframes shockwave-expand {
+        0% { transform: translate(-50%, -50%) scale(0.15); opacity: 1; }
+        100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
+      }
+    </style>
+  </head>
+  <script type="text/javascript" src="https://cs460.org/js/glmatrix.js"></script>
+  
+  <script id="vertexshader" type="glsl">
+    attribute vec3 a_position;
+
+    uniform vec3 u_offset;
+
+    void main(void) {
+
+      vec3 final_position = a_position;
+      final_position.x += u_offset.x;
+      final_position.y += u_offset.y;
+      final_position.z += u_offset.z;
+    
+      gl_Position = vec4( final_position, 1.);
+      gl_PointSize = 20.0;
+    
+    }
+  </script>
+  
+  <script id="fragmentshader" type="glsl">
+    precision mediump float;
+
+    uniform vec4 u_color;
+
+    void main(void) {
+
+      gl_FragColor = u_color;
+
+    }
+  </script>
+  
+  <script>
+
+    var c, gl;
+    var v_shader, f_shader, shaderprogram;
+    var vertices, indices, v_buffer, i_buffer;
+
+    var step_x = 0.0;
+    var step_y = 0.0;
+    var obstacle_factor = 3; // Hint for the bonus!
+    var direction_y = 0;
+    var direction_x = 0;
+    var objects = [];
+
+
+    window.onload = function() {
+
+      //************************************************************//
+      //
+      // INITIALIZE WEBGL
+      //
+      c = document.getElementById( 'c' ); // setup canvas
+      c.width = window.innerWidth;
+      c.height = window.innerHeight;
+
+      gl = c.getContext( 'webgl' ); // setup GL context
+      gl.viewport(0, 0, c.width, c.height );
+
+
+      //************************************************************//
+      //
+      // SHADERS
+      //
+      v_shader = gl.createShader( gl.VERTEX_SHADER );
+      f_shader = gl.createShader( gl.FRAGMENT_SHADER );
+      
+      // compile vertex shader
+      var vs_source = document.getElementById( 'vertexshader' ).textContent || document.getElementById( 'vertexshader' ).innerText;
+      gl.shaderSource( v_shader, vs_source );
+      gl.compileShader( v_shader );
+
+      if (!gl.getShaderParameter( v_shader, gl.COMPILE_STATUS)) {
+        console.log(gl.getShaderInfoLog( v_shader ));
+      }
+
+      // compile fragment shader
+      var fs_source = document.getElementById( 'fragmentshader' ).textContent || document.getElementById( 'fragmentshader' ).innerText;
+      gl.shaderSource( f_shader, fs_source );
+      gl.compileShader( f_shader );
+
+      if (!gl.getShaderParameter( f_shader, gl.COMPILE_STATUS)) {
+        console.log(gl.getShaderInfoLog( f_shader ));
+      }
+
+      // attach and link the shaders
+      shaderprogram = gl.createProgram();
+      gl.attachShader( shaderprogram, v_shader );
+      gl.attachShader( shaderprogram, f_shader );
+
+      gl.linkProgram( shaderprogram );
+
+      gl.useProgram( shaderprogram );
+
+
+      // create multiple objects
+      objects = [];
+      objects.push( createAirplane());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+      objects.push( createObstacle());
+
+      animate();
+
+    };
+
+
+
+    function createAirplane() {
+
+      //
+      // Part 1 Starts
+      //
+      // Define unique vertices for airplane facing right (+x), centered at (0,0,0)
+      var vertices = new Float32Array([
+         0.06,  0.00,  0.0, // V0: Nose tip
+         0.02,  0.015, 0.0, // V1: Cockpit / top fuselage front
+         0.02, -0.015, 0.0, // V2: Bottom fuselage front
+         0.00,  0.00,  0.0, // V3: Airplane center
+        -0.01,  0.075, 0.0, // V4: Top wing tip
+        -0.03,  0.015, 0.0, // V5: Top wing rear / fuselage back top
+        -0.01, -0.075, 0.0, // V6: Bottom wing tip
+        -0.03, -0.015, 0.0, // V7: Bottom wing rear / fuselage back bottom
+        -0.06,  0.00,  0.0, // V8: Tail base
+        -0.07,  0.045, 0.0, // V9: Top tail fin tip
+        -0.07, -0.045, 0.0  // V10: Bottom tail fin tip
+      ]);
+
+      var v_buffer = gl.createBuffer();
+      gl.bindBuffer( gl.ARRAY_BUFFER, v_buffer );
+      gl.bufferData( gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW );
+      gl.bindBuffer( gl.ARRAY_BUFFER, null );
+
+      //
+      // Part 1 Ends
+      //
+
+      var offset = [0.,0.,0.];
+      var color = [0.,0.,0.,1.];
+
+      //
+      // Bonus Part 3!
+      //
+      // Triangle indices (8 triangles = 24 vertex indices)
+      var indices = new Uint8Array([
+        0, 2, 1,   // Nose cone
+        1, 2, 3,   // Body front
+        1, 5, 4,   // Top wing
+        2, 6, 7,   // Bottom wing
+        3, 7, 5,   // Body mid
+        5, 7, 8,   // Tail cone
+        5, 8, 9,   // Upper tail fin
+        7, 10, 8   // Lower tail fin
+      ]);
+
+      var i_buffer = gl.createBuffer();
+      gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, i_buffer );
+      gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW );
+      gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, null );
+
+      return ['airplane', v_buffer, vertices, offset, color, gl.TRIANGLES, i_buffer, indices];
+
+    }
+
+
+
+    function createObstacle() {
+
+      var vertices = new Float32Array( [ 0.0, 0.0, 0.0 ]);
+
+      var v_buffer = gl.createBuffer(); // create
+      gl.bindBuffer( gl.ARRAY_BUFFER, v_buffer ); // bind
+      gl.bufferData( gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW ); // put data in
+      gl.bindBuffer( gl.ARRAY_BUFFER, null ); // unbind
+
+      //
+      // Part 2 Starts
+      //
+      var ox = Math.random() * 2.0 - 1.0;
+      var oy = Math.random() * 2.0 - 1.0;
+      // Ensure obstacle does not spawn directly on top or right in front of the airplane at startup
+      while (Math.abs(ox) < 0.35 && Math.abs(oy) < 0.25) {
+        ox = Math.random() * 2.0 - 1.0;
+        oy = Math.random() * 2.0 - 1.0;
+      }
+      var offset = [ox, oy, 0.];
+
+      //
+      // Part 2 Ends
+      //
+
+      var color = [Math.random(),Math.random(),Math.random(),1.];
+
+      return ['obstacle', v_buffer, vertices, offset, color, gl.POINTS];
+
+    }
+
+
+
+    //
+    // Part 3 Starts (no coding required, just explanations in PDF)
+    //
+    function calculateBoundingBox(vertices, offset) {
+
+      var minx = 1000;
+      var maxx = -1000;
+      var miny = 1000;
+      var maxy = -1000;
+      var minz = 1000;
+      var maxz = -1000;
+
+      for (var v=0; v<vertices.length; v+=3) {
+
+        var currentx = vertices[v] + offset[0];
+        var currenty = vertices[v+1] + offset[1];
+        var currentz = vertices[v+2] + offset[2];
+
+        minx = Math.min( minx, currentx );
+        miny = Math.min( miny, currenty );
+        minz = Math.min( minz, currentz );
+
+        maxx = Math.max( maxx, currentx );
+        maxy = Math.max( maxy, currenty );
+        maxz = Math.max( maxz, currentz );
+
+      }
+
+      return [minx, maxx, miny, maxy, minz, maxz];
+
+    }
+
+    function detectCollision(bbox, point) {
+
+      var collision = false;
+
+      if (point[0] >= bbox[0] && point[0] <= bbox[1]) {
+        if (point[1] >= bbox[2] && point[1] <= bbox[3]) {
+          if (point[2] >= bbox[4] && point[2] <= bbox[5]) {
+
+            collision = true;
+
+          }
+        }
+      }
+
+      return collision;
+
+    }
+    //
+    // Part 3 Ends
+    //
+
+
+
+    //
+    // Part 4 Starts
+    //
+    var game_over = false;
+    var antigravity_active = false;
+    var antigravity_timer = 0;
+
+    function triggerAntiGravityMagic() {
+      if (game_over) return;
+      antigravity_active = true;
+      antigravity_timer = 150; // ~2.5 seconds of anti-gravity magic
+
+      var badge = document.getElementById('magic-badge');
+      if (badge) {
+        badge.className = 'active';
+        badge.innerHTML = '🔮 ANTI-GRAVITY MAGIC ACTIVE! 🔮';
+      }
+
+      // Spawn magical shockwave ring centered on the airplane
+      if (objects.length > 0 && objects[0]) {
+        var plane_off = objects[0][3];
+        var screenX = (plane_off[0] + 1.0) * 0.5 * window.innerWidth;
+        var screenY = (1.0 - (plane_off[1] + 1.0) * 0.5) * window.innerHeight;
+
+        var ring = document.createElement('div');
+        ring.className = 'shockwave';
+        ring.style.left = screenX + 'px';
+        ring.style.top = screenY + 'px';
+        document.body.appendChild(ring);
+
+        setTimeout(function() {
+          if (ring && ring.parentNode) {
+            ring.parentNode.removeChild(ring);
+          }
+        }, 900);
+      }
+    }
+
+    function handleKey(e) {
+
+      var code = e.keyCode || e.which;
+      var key = e.key;
+
+      if (game_over || code == 82 || key == 'r' || key == 'R') {
+        // Restart the game if over or R pressed
+        game_over = false;
+        antigravity_active = false;
+        antigravity_timer = 0;
+        direction_x = 0;
+        direction_y = 0;
+        step_x = 0.0;
+        step_y = 0.0;
+        obstacle_factor = 3;
+        framecounter = 0;
+        document.getElementById('scoreboard').innerHTML = '0';
+        objects[0][3] = [0., 0., 0.];
+        objects[0][4] = [0., 0., 0., 1.];
+        var badge = document.getElementById('magic-badge');
+        if (badge) {
+          badge.className = '';
+          badge.innerHTML = '<span class="magic-icon">✦</span><span class="magic-text">ANTI-GRAVITY MAGIC [SPACE]</span><span class="magic-icon">✦</span>';
+        }
+        var tField = document.getElementById('telemetry-field');
+        if (tField) {
+          tField.innerText = 'ACTIVE';
+          tField.style.color = '#38bdf8';
+        }
+        var tFact = document.getElementById('telemetry-factor');
+        if (tFact) {
+          tFact.innerText = '3.0x';
+        }
+        for (var i = 1; i < objects.length; i++) {
+          var rox = Math.random() * 2.0 - 1.0;
+          var roy = Math.random() * 2.0 - 1.0;
+          while (Math.abs(rox) < 0.35 && Math.abs(roy) < 0.25) {
+            rox = Math.random() * 2.0 - 1.0;
+            roy = Math.random() * 2.0 - 1.0;
+          }
+          objects[i][3] = [rox, roy, 0.];
+        }
+        requestAnimationFrame(animate);
+      }
+
+      // Anti-Gravity Magic activation
+      if (code == 32 || key == ' ' || key == 'Spacebar' || key == 'g' || key == 'G') {
+        triggerAntiGravityMagic();
+        if (e.preventDefault) e.preventDefault();
+      }
+
+      if ( code == 38 || key == 'ArrowUp' || key == 'w' || key == 'W' ) {
+        // player pressed up
+        step_x = 0.0;
+        step_y = 0.02;
+        direction_x = 0;
+        direction_y = 1;
+        if (e.preventDefault) e.preventDefault();
+
+      } else if (code == 40 || key == 'ArrowDown' || key == 's' || key == 'S' ) {
+        // player pressed down
+        step_x = 0.0;
+        step_y = 0.02;
+        direction_x = 0;
+        direction_y = -1;
+        if (e.preventDefault) e.preventDefault();
+
+      } else if (code == 37 || key == 'ArrowLeft' || key == 'a' || key == 'A' ) {
+        // player pressed left
+        step_x = 0.02;
+        step_y = 0.0;
+        direction_x = -1;
+        direction_y = 0;
+        if (e.preventDefault) e.preventDefault();
+
+      } else if (code == 39 || key == 'ArrowRight' || key == 'd' || key == 'D' ) {
+        // player pressed right
+        step_x = 0.02;
+        step_y = 0.0;
+        direction_x = 1;
+        direction_y = 0;
+        if (e.preventDefault) e.preventDefault();
+
+      }
+
+    }
+
+    window.onkeyup = handleKey;
+    window.onkeydown = handleKey;
+    document.onkeyup = handleKey;
+    document.onkeydown = handleKey;
+    window.addEventListener('keydown', handleKey, false);
+    window.addEventListener('keyup', handleKey, false);
+    //
+    // Part 4 Ends
+    //
+
+
+
+
+    var framecounter = 0;
+
+    function animate() {
+
+      framecounter += 1;
+
+      if (framecounter > 150) {
+
+        // roughly every five seconds with 30 FPS
+
+        // update score
+        document.getElementById('scoreboard').innerHTML = parseInt(document.getElementById('scoreboard').innerHTML) + 100;
+
+        //
+        // Bonus Part 2!
+        //
+        obstacle_factor += 1;
+
+        var tFact = document.getElementById('telemetry-factor');
+        if (tFact) {
+          tFact.innerText = obstacle_factor.toFixed(1) + 'x';
+        }
+
+        framecounter = 0;
+
+      }
+
+      gl.clearColor( 0., 0., 0., 0.);
+      gl.clear( gl.COLOR_BUFFER_BIT );
+
+
+
+      for( var o = 0; o < objects.length; o++ ) {
+
+        var current_objecttype = objects[o][0];
+        var current_v_buffer = objects[o][1];
+        var current_vertices = objects[o][2];
+        var current_offset = objects[o][3];
+        var current_color = objects[o][4];
+        var current_drawtype = objects[o][5];
+
+        var current_v_count = current_vertices.length;
+        
+        if (current_objecttype == 'airplane') {
+
+          // Anti-gravity gentle hovering when idling
+          if (step_x === 0.0 && step_y === 0.0) {
+            current_offset[1] += Math.sin(framecounter * 0.08) * 0.0012;
+          }
+
+          // update offsets
+          if ( current_offset[0] <= -1. ) {
+            // bumped into left end of screen
+            direction_x = 1;
+          } else if ( current_offset[0] >= 1. ) {
+            // bumped into right end of screen
+            direction_x = -1;
+          }
+          current_offset[0] += direction_x*step_x;
+
+          if ( current_offset[1] <= -1. ) {
+            // bumped into bottom end of screen
+            direction_y = 1;
+          } else if ( current_offset[1] >= 1. ) {
+            // bumped into top end of screen
+            direction_y = -1;
+          }
+          current_offset[1] += direction_y*step_y;
+
+          // Anti-Gravity Magic Aura update
+          if (antigravity_active) {
+            antigravity_timer -= 1;
+            var ct = framecounter * 0.15;
+            current_color = [
+              0.4 + 0.5 * Math.sin(ct),
+              0.2 + 0.6 * Math.sin(ct + 2.0),
+              0.9 + 0.1 * Math.sin(ct + 4.0),
+              1.0
+            ];
+            objects[o][4] = current_color;
+
+            if (antigravity_timer <= 0) {
+              antigravity_active = false;
+              objects[o][4] = [0., 0., 0., 1.];
+              var badge = document.getElementById('magic-badge');
+              if (badge) {
+                badge.className = '';
+                badge.innerHTML = '✨ [SPACE] ANTI-GRAVITY MAGIC ✨';
+              }
+            }
+          }
+
+          // get the bounding box of this airplane
+          var bbox_plane = calculateBoundingBox( current_vertices, current_offset);
+
+
+        } else if (current_objecttype == 'obstacle') {
+
+
+          //
+          // Bonus Part 1!
+          //
+          current_offset[0] -= 0.005 * obstacle_factor;
+
+          // Anti-Gravity Magic Forcefield: push obstacles away!
+          if (antigravity_active) {
+            var plane_off = objects[0][3];
+            var dx = current_offset[0] - plane_off[0];
+            var dy = current_offset[1] - plane_off[1];
+            var dist = Math.hypot(dx, dy);
+            if (dist < 0.5 && dist > 0.0001) {
+              current_offset[0] += (dx / dist) * 0.035;
+              current_offset[1] += (dy / dist) * 0.035;
+            }
+          }
+
+          // Wrap around to right side when obstacle goes off screen
+          if (current_offset[0] < -1.0) {
+            current_offset[0] = 1.0;
+            current_offset[1] = Math.random() * 2.0 - 1.0;
+          }
+
+          // collision detection using the bounding box of this airplane
+          if (detectCollision(bbox_plane, current_offset)) {
+
+            document.getElementById('scoreboard').innerHTML += ' AND...GAME OVER! (Press any arrow key or R to restart)';
+            game_over = true;
+            var tField = document.getElementById('telemetry-field');
+            if (tField) {
+              tField.innerText = 'CRITICAL';
+              tField.style.color = '#f43f5e';
+            }
+
+            return;
+
+          }
+
+
+        }
+
+
+        //************************************************************//
+        //
+        // CONNECT SHADER WITH GEOMETRY
+        //
+        
+        gl.bindBuffer( gl.ARRAY_BUFFER, current_v_buffer );
+
+        // Bonus Part 3: bind element array buffer if available
+        var current_i_buffer = objects[o][6];
+        var current_indices = objects[o][7];
+        if (current_i_buffer) {
+          gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, current_i_buffer );
+        } else {
+          gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, null );
+        }
+
+        // find the attribute in the shader source
+        var a_position = gl.getAttribLocation( shaderprogram, 'a_position' );
+
+        gl.vertexAttribPointer( a_position, 3, gl.FLOAT, false, 0, 0 );
+
+        gl.enableVertexAttribArray ( a_position );
+
+        // find the uniform in the shader source
+        var u_offset = gl.getUniformLocation( shaderprogram, 'u_offset' );
+
+        gl.uniform3fv( u_offset, new Float32Array(current_offset) );
+
+        var u_color = gl.getUniformLocation( shaderprogram, 'u_color' );
+        
+        gl.uniform4fv( u_color, new Float32Array(current_color) );
+
+        //************************************************************//
+        //
+        // DRAW!
+        //
+
+        //
+        // Bonus Part 3!
+        //
+        if (current_i_buffer) {
+          gl.drawElements( current_drawtype, current_indices.length, gl.UNSIGNED_BYTE, 0 );
+        } else {
+          gl.drawArrays( current_drawtype, 0, current_v_count/3 );
+        }
+
+      }
+
+
+      requestAnimationFrame(animate);
+
+    };
+
+  </script>
+  <body>
+    <canvas id="c"></canvas>
+
+    <!-- TOP ANTIGRAVITY HUD -->
+    <header id="antigravity-hud">
+      <div class="hud-left">
+        <div class="brand-title">
+          <span class="brand-orb"></span>
+          <span class="brand-name">ANTIGRAVITY</span>
+          <span class="brand-sub">FLIGHT OS</span>
+        </div>
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span>ZERO-G STABILIZED</span>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <div class="telemetry-item">
+          <span class="telemetry-label">GRAVITY</span>
+          <span class="telemetry-val">0.00 G</span>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">WARP FACTOR</span>
+          <span class="telemetry-val" id="telemetry-factor">3.0x</span>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">FIELD</span>
+          <span class="telemetry-val glow" id="telemetry-field">ACTIVE</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="score-card">
+          <span class="score-label">FLIGHT SCORE</span>
+          <div id="scoreboard">0</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- BOTTOM FLIGHT DECK -->
+    <footer id="flight-deck">
+      <div class="controls-guide">
+        <span class="ctrl-key">▲</span>
+        <span class="ctrl-key">▼</span>
+        <span class="ctrl-key">◀</span>
+        <span class="ctrl-key">▶</span>
+        <span class="ctrl-hint">STEER JET</span>
+      </div>
+
+      <div id="magic-badge" onclick="triggerAntiGravityMagic()">
+        <span class="magic-icon">✦</span>
+        <span class="magic-text">ANTI-GRAVITY MAGIC [SPACE]</span>
+        <span class="magic-icon">✦</span>
+      </div>
+
+      <div class="controls-guide">
+        <span class="ctrl-key">R</span>
+        <span class="ctrl-hint">RESTART</span>
+      </div>
+    </footer>
+  </body>
+</html>
