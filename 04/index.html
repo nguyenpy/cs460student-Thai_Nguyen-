@@ -219,8 +219,8 @@
       //
       var ox = Math.random() * 2.0 - 1.0;
       var oy = Math.random() * 2.0 - 1.0;
-      // Ensure obstacle does not spawn directly on top of the airplane center at startup
-      while (Math.abs(ox) < 0.2 && Math.abs(oy) < 0.2) {
+      // Ensure obstacle does not spawn directly on top or right in front of the airplane at startup
+      while (Math.abs(ox) < 0.35 && Math.abs(oy) < 0.25) {
         ox = Math.random() * 2.0 - 1.0;
         oy = Math.random() * 2.0 - 1.0;
       }
@@ -296,41 +296,78 @@
     //
     // Part 4 Starts
     //
-    window.onkeyup = function(e) {
+    var game_over = false;
 
-      if ( e.keyCode == 38 ) {
+    function handleKey(e) {
+
+      var code = e.keyCode || e.which;
+      var key = e.key;
+
+      if (game_over) {
+        // Restart the game if over
+        game_over = false;
+        direction_x = 0;
+        direction_y = 0;
+        step_x = 0.0;
+        step_y = 0.0;
+        obstacle_factor = 3;
+        framecounter = 0;
+        document.getElementById('scoreboard').innerHTML = '0';
+        objects[0][3] = [0., 0., 0.];
+        for (var i = 1; i < objects.length; i++) {
+          var rox = Math.random() * 2.0 - 1.0;
+          var roy = Math.random() * 2.0 - 1.0;
+          while (Math.abs(rox) < 0.35 && Math.abs(roy) < 0.25) {
+            rox = Math.random() * 2.0 - 1.0;
+            roy = Math.random() * 2.0 - 1.0;
+          }
+          objects[i][3] = [rox, roy, 0.];
+        }
+        requestAnimationFrame(animate);
+      }
+
+      if ( code == 38 || key == 'ArrowUp' || key == 'w' || key == 'W' ) {
         // player pressed up
         step_x = 0.0;
-        step_y = 0.01;
+        step_y = 0.02;
         direction_x = 0;
         direction_y = 1;
+        if (e.preventDefault) e.preventDefault();
 
-      } else if (e.keyCode == 40 ) {
+      } else if (code == 40 || key == 'ArrowDown' || key == 's' || key == 'S' ) {
         // player pressed down
         step_x = 0.0;
-        step_y = 0.01;
+        step_y = 0.02;
         direction_x = 0;
         direction_y = -1;
+        if (e.preventDefault) e.preventDefault();
 
-      } else if (e.keyCode == 37 ) {
+      } else if (code == 37 || key == 'ArrowLeft' || key == 'a' || key == 'A' ) {
         // player pressed left
-        step_x = 0.01;
+        step_x = 0.02;
         step_y = 0.0;
         direction_x = -1;
         direction_y = 0;
+        if (e.preventDefault) e.preventDefault();
 
-      } else if (e.keyCode == 39 ) {
+      } else if (code == 39 || key == 'ArrowRight' || key == 'd' || key == 'D' ) {
         // player pressed right
-        step_x = 0.01;
+        step_x = 0.02;
         step_y = 0.0;
         direction_x = 1;
         direction_y = 0;
+        if (e.preventDefault) e.preventDefault();
 
       }
 
-    };
+    }
 
-    window.onkeydown = window.onkeyup;
+    window.onkeyup = handleKey;
+    window.onkeydown = handleKey;
+    document.onkeyup = handleKey;
+    document.onkeydown = handleKey;
+    window.addEventListener('keydown', handleKey, false);
+    window.addEventListener('keyup', handleKey, false);
     //
     // Part 4 Ends
     //
@@ -419,7 +456,8 @@
           // collision detection using the bounding box of this airplane
           if (detectCollision(bbox_plane, current_offset)) {
 
-            document.getElementById('scoreboard').innerHTML += ' AND...GAME OVER!';
+            document.getElementById('scoreboard').innerHTML += ' AND...GAME OVER! (Press any arrow key to restart)';
+            game_over = true;
 
             return;
 
@@ -455,7 +493,7 @@
         // find the uniform in the shader source
         var u_offset = gl.getUniformLocation( shaderprogram, 'u_offset' );
 
-        gl.uniform3fv( u_offset, current_offset);
+        gl.uniform3fv( u_offset, new Float32Array(current_offset) );
 
         var u_color = gl.getUniformLocation( shaderprogram, 'u_color' );
         
