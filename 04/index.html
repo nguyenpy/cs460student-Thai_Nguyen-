@@ -76,6 +76,7 @@
     var obstacle_factor = 3; // Hint for the bonus!
     var direction_y = 0;
     var direction_x = 0;
+    var objects = [];
 
 
     window.onload = function() {
@@ -100,7 +101,8 @@
       f_shader = gl.createShader( gl.FRAGMENT_SHADER );
       
       // compile vertex shader
-      gl.shaderSource( v_shader, document.getElementById( 'vertexshader' ).innerText );
+      var vs_source = document.getElementById( 'vertexshader' ).textContent || document.getElementById( 'vertexshader' ).innerText;
+      gl.shaderSource( v_shader, vs_source );
       gl.compileShader( v_shader );
 
       if (!gl.getShaderParameter( v_shader, gl.COMPILE_STATUS)) {
@@ -108,7 +110,8 @@
       }
 
       // compile fragment shader
-      gl.shaderSource( f_shader, document.getElementById( 'fragmentshader' ).innerText );
+      var fs_source = document.getElementById( 'fragmentshader' ).textContent || document.getElementById( 'fragmentshader' ).innerText;
+      gl.shaderSource( f_shader, fs_source );
       gl.compileShader( f_shader );
 
       if (!gl.getShaderParameter( f_shader, gl.COMPILE_STATUS)) {
@@ -438,6 +441,8 @@
         var current_indices = objects[o][7];
         if (current_i_buffer) {
           gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, current_i_buffer );
+        } else {
+          gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, null );
         }
 
         // find the attribute in the shader source
