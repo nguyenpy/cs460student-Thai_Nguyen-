@@ -3,6 +3,9 @@
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <title>Vanilla WebGL!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
       html, body { 
         background-color:#000;
@@ -13,23 +16,318 @@
         background-image: url(https://cs460.org/gfx/bg.gif);
         background-repeat: no-repeat;
         background-size: 100% 100%;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #fff;
       }
 
       #c {
         width: 100%;
         height: 100%;
+        display: block;
+      }
+
+      /* Top Anti-Gravity HUD */
+      #antigravity-hud {
+        position: absolute;
+        top: 16px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+        z-index: 20;
+        animation: antigravity-hover 4s ease-in-out infinite alternate;
+      }
+
+      @keyframes antigravity-hover {
+        0% { transform: translateY(0px); }
+        100% { transform: translateY(-4px); }
+      }
+
+      .hud-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: rgba(11, 15, 25, 0.72);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 8px 18px;
+        border-radius: 9999px;
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.12);
+        pointer-events: auto;
+      }
+
+      .brand-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .brand-orb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #38bdf8 20%, #6366f1 80%);
+        box-shadow: 0 0 10px #38bdf8, 0 0 20px #6366f1;
+        animation: orb-pulse 2s infinite ease-in-out;
+      }
+
+      @keyframes orb-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.25); opacity: 1; box-shadow: 0 0 16px #38bdf8, 0 0 28px #a855f7; }
+      }
+
+      .brand-name {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: 2.5px;
+        background: linear-gradient(135deg, #ffffff 30%, #38bdf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .brand-sub {
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        color: #94a3b8;
+        padding-left: 4px;
+        border-left: 1px solid rgba(148, 163, 184, 0.3);
+      }
+
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 4px 10px;
+        border-radius: 9999px;
+      }
+
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 8px #34d399;
+        animation: live-blink 1.5s infinite;
+      }
+
+      @keyframes live-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .hud-center {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: rgba(11, 15, 25, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 8px 22px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        pointer-events: auto;
+      }
+
+      .telemetry-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .telemetry-label {
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .telemetry-val {
+        font-family: 'Space Grotesk', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: #e2e8f0;
+      }
+
+      .telemetry-val.glow {
+        color: #38bdf8;
+        text-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      }
+
+      .telemetry-divider {
+        width: 1px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .hud-right {
+        pointer-events: auto;
+      }
+
+      .score-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        background: rgba(11, 15, 25, 0.78);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 8px 20px;
+        border-radius: 16px;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(56, 189, 248, 0.18);
+      }
+
+      .score-label {
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: #38bdf8;
+        font-weight: 700;
+        text-transform: uppercase;
       }
 
       #scoreboard {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        color: #ffffff;
-        font-family: monospace, sans-serif;
+        font-family: 'Space Grotesk', monospace, sans-serif;
         font-size: 24px;
-        font-weight: bold;
-        text-shadow: 2px 2px 4px #000000;
-        z-index: 10;
+        font-weight: 700;
+        color: #ffffff;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.8), 0 2px 4px #000;
+        line-height: 1.2;
+        transition: all 0.2s ease;
+      }
+
+      /* Bottom Flight Deck */
+      #flight-deck {
+        position: absolute;
+        bottom: 22px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+        z-index: 20;
+      }
+
+      .controls-guide {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(11, 15, 25, 0.65);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        padding: 6px 14px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+        pointer-events: auto;
+      }
+
+      .ctrl-key {
+        font-family: 'Space Grotesk', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        padding: 3px 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      }
+
+      .ctrl-hint {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        color: #94a3b8;
+        margin-left: 4px;
+      }
+
+      #magic-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #a5f3fc;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 12px 28px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.85) 100%);
+        border: 1.5px solid rgba(56, 189, 248, 0.6);
+        border-radius: 9999px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 25px rgba(56, 189, 248, 0.4);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: auto;
+      }
+
+      #magic-badge:hover {
+        transform: scale(1.06);
+        border-color: #38bdf8;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 45px rgba(56, 189, 248, 0.7);
+        color: #ffffff;
+      }
+
+      #magic-badge.active {
+        background: linear-gradient(135deg, rgba(225, 29, 72, 0.95) 0%, rgba(147, 51, 234, 0.9) 100%);
+        border-color: #f43f5e;
+        box-shadow: 0 0 50px rgba(244, 63, 94, 0.9), 0 0 90px rgba(168, 85, 247, 0.75);
+        color: #ffffff;
+        animation: pulse-magic 0.45s infinite alternate;
+      }
+
+      @keyframes pulse-magic {
+        from { transform: scale(1); }
+        to { transform: scale(1.08); }
+      }
+
+      .magic-icon {
+        color: #38bdf8;
+        font-size: 15px;
+        animation: icon-spin 4s linear infinite;
+      }
+
+      #magic-badge.active .magic-icon {
+        color: #fef08a;
+      }
+
+      @keyframes icon-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .shockwave {
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        pointer-events: none;
+        border: 4px solid rgba(56, 189, 248, 0.95);
+        box-shadow: 0 0 40px rgba(168, 85, 247, 0.95), inset 0 0 35px rgba(56, 189, 248, 0.85);
+        transform: translate(-50%, -50%) scale(0.15);
+        animation: shockwave-expand 0.95s cubic-bezier(0.1, 0.85, 0.25, 1) forwards;
+        z-index: 15;
+      }
+
+      @keyframes shockwave-expand {
+        0% { transform: translate(-50%, -50%) scale(0.15); opacity: 1; }
+        100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
       }
     </style>
   </head>
@@ -297,15 +595,50 @@
     // Part 4 Starts
     //
     var game_over = false;
+    var antigravity_active = false;
+    var antigravity_timer = 0;
+
+    function triggerAntiGravityMagic() {
+      if (game_over) return;
+      antigravity_active = true;
+      antigravity_timer = 150; // ~2.5 seconds of anti-gravity magic
+
+      var badge = document.getElementById('magic-badge');
+      if (badge) {
+        badge.className = 'active';
+        badge.innerHTML = '🔮 ANTI-GRAVITY MAGIC ACTIVE! 🔮';
+      }
+
+      // Spawn magical shockwave ring centered on the airplane
+      if (objects.length > 0 && objects[0]) {
+        var plane_off = objects[0][3];
+        var screenX = (plane_off[0] + 1.0) * 0.5 * window.innerWidth;
+        var screenY = (1.0 - (plane_off[1] + 1.0) * 0.5) * window.innerHeight;
+
+        var ring = document.createElement('div');
+        ring.className = 'shockwave';
+        ring.style.left = screenX + 'px';
+        ring.style.top = screenY + 'px';
+        document.body.appendChild(ring);
+
+        setTimeout(function() {
+          if (ring && ring.parentNode) {
+            ring.parentNode.removeChild(ring);
+          }
+        }, 900);
+      }
+    }
 
     function handleKey(e) {
 
       var code = e.keyCode || e.which;
       var key = e.key;
 
-      if (game_over) {
-        // Restart the game if over
+      if (game_over || code == 82 || key == 'r' || key == 'R') {
+        // Restart the game if over or R pressed
         game_over = false;
+        antigravity_active = false;
+        antigravity_timer = 0;
         direction_x = 0;
         direction_y = 0;
         step_x = 0.0;
@@ -314,6 +647,21 @@
         framecounter = 0;
         document.getElementById('scoreboard').innerHTML = '0';
         objects[0][3] = [0., 0., 0.];
+        objects[0][4] = [0., 0., 0., 1.];
+        var badge = document.getElementById('magic-badge');
+        if (badge) {
+          badge.className = '';
+          badge.innerHTML = '<span class="magic-icon">✦</span><span class="magic-text">ANTI-GRAVITY MAGIC [SPACE]</span><span class="magic-icon">✦</span>';
+        }
+        var tField = document.getElementById('telemetry-field');
+        if (tField) {
+          tField.innerText = 'ACTIVE';
+          tField.style.color = '#38bdf8';
+        }
+        var tFact = document.getElementById('telemetry-factor');
+        if (tFact) {
+          tFact.innerText = '3.0x';
+        }
         for (var i = 1; i < objects.length; i++) {
           var rox = Math.random() * 2.0 - 1.0;
           var roy = Math.random() * 2.0 - 1.0;
@@ -324,6 +672,12 @@
           objects[i][3] = [rox, roy, 0.];
         }
         requestAnimationFrame(animate);
+      }
+
+      // Anti-Gravity Magic activation
+      if (code == 32 || key == ' ' || key == 'Spacebar' || key == 'g' || key == 'G') {
+        triggerAntiGravityMagic();
+        if (e.preventDefault) e.preventDefault();
       }
 
       if ( code == 38 || key == 'ArrowUp' || key == 'w' || key == 'W' ) {
@@ -393,6 +747,11 @@
         //
         obstacle_factor += 1;
 
+        var tFact = document.getElementById('telemetry-factor');
+        if (tFact) {
+          tFact.innerText = obstacle_factor.toFixed(1) + 'x';
+        }
+
         framecounter = 0;
 
       }
@@ -415,6 +774,11 @@
         
         if (current_objecttype == 'airplane') {
 
+          // Anti-gravity gentle hovering when idling
+          if (step_x === 0.0 && step_y === 0.0) {
+            current_offset[1] += Math.sin(framecounter * 0.08) * 0.0012;
+          }
+
           // update offsets
           if ( current_offset[0] <= -1. ) {
             // bumped into left end of screen
@@ -434,6 +798,28 @@
           }
           current_offset[1] += direction_y*step_y;
 
+          // Anti-Gravity Magic Aura update
+          if (antigravity_active) {
+            antigravity_timer -= 1;
+            var ct = framecounter * 0.15;
+            current_color = [
+              0.4 + 0.5 * Math.sin(ct),
+              0.2 + 0.6 * Math.sin(ct + 2.0),
+              0.9 + 0.1 * Math.sin(ct + 4.0),
+              1.0
+            ];
+            objects[o][4] = current_color;
+
+            if (antigravity_timer <= 0) {
+              antigravity_active = false;
+              objects[o][4] = [0., 0., 0., 1.];
+              var badge = document.getElementById('magic-badge');
+              if (badge) {
+                badge.className = '';
+                badge.innerHTML = '✨ [SPACE] ANTI-GRAVITY MAGIC ✨';
+              }
+            }
+          }
 
           // get the bounding box of this airplane
           var bbox_plane = calculateBoundingBox( current_vertices, current_offset);
@@ -447,6 +833,18 @@
           //
           current_offset[0] -= 0.005 * obstacle_factor;
 
+          // Anti-Gravity Magic Forcefield: push obstacles away!
+          if (antigravity_active) {
+            var plane_off = objects[0][3];
+            var dx = current_offset[0] - plane_off[0];
+            var dy = current_offset[1] - plane_off[1];
+            var dist = Math.hypot(dx, dy);
+            if (dist < 0.5 && dist > 0.0001) {
+              current_offset[0] += (dx / dist) * 0.035;
+              current_offset[1] += (dy / dist) * 0.035;
+            }
+          }
+
           // Wrap around to right side when obstacle goes off screen
           if (current_offset[0] < -1.0) {
             current_offset[0] = 1.0;
@@ -456,8 +854,13 @@
           // collision detection using the bounding box of this airplane
           if (detectCollision(bbox_plane, current_offset)) {
 
-            document.getElementById('scoreboard').innerHTML += ' AND...GAME OVER! (Press any arrow key to restart)';
+            document.getElementById('scoreboard').innerHTML += ' AND...GAME OVER! (Press any arrow key or R to restart)';
             game_over = true;
+            var tField = document.getElementById('telemetry-field');
+            if (tField) {
+              tField.innerText = 'CRITICAL';
+              tField.style.color = '#f43f5e';
+            }
 
             return;
 
@@ -523,6 +926,66 @@
   </script>
   <body>
     <canvas id="c"></canvas>
-    <div id="scoreboard">0</div>
+
+    <!-- TOP ANTIGRAVITY HUD -->
+    <header id="antigravity-hud">
+      <div class="hud-left">
+        <div class="brand-title">
+          <span class="brand-orb"></span>
+          <span class="brand-name">ANTIGRAVITY</span>
+          <span class="brand-sub">FLIGHT OS</span>
+        </div>
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span>ZERO-G STABILIZED</span>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <div class="telemetry-item">
+          <span class="telemetry-label">GRAVITY</span>
+          <span class="telemetry-val">0.00 G</span>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">WARP FACTOR</span>
+          <span class="telemetry-val" id="telemetry-factor">3.0x</span>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-item">
+          <span class="telemetry-label">FIELD</span>
+          <span class="telemetry-val glow" id="telemetry-field">ACTIVE</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="score-card">
+          <span class="score-label">FLIGHT SCORE</span>
+          <div id="scoreboard">0</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- BOTTOM FLIGHT DECK -->
+    <footer id="flight-deck">
+      <div class="controls-guide">
+        <span class="ctrl-key">▲</span>
+        <span class="ctrl-key">▼</span>
+        <span class="ctrl-key">◀</span>
+        <span class="ctrl-key">▶</span>
+        <span class="ctrl-hint">STEER JET</span>
+      </div>
+
+      <div id="magic-badge" onclick="triggerAntiGravityMagic()">
+        <span class="magic-icon">✦</span>
+        <span class="magic-text">ANTI-GRAVITY MAGIC [SPACE]</span>
+        <span class="magic-icon">✦</span>
+      </div>
+
+      <div class="controls-guide">
+        <span class="ctrl-key">R</span>
+        <span class="ctrl-hint">RESTART</span>
+      </div>
+    </footer>
   </body>
 </html>
